@@ -3,712 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CobraYA — Lector de Respuestas Gmail</title>
+<title>CobraYA — Clasificador de Respuestas Gmail</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --bg: #09090f;
-    --surface: #111118;
-    --surface2: #18181f;
-    --border: #222230;
-    --accent: #00e5a0;
-    --accent-dim: rgba(0,229,160,0.12);
-    --accent-dark: #004d35;
-    --text: #e4e4f0;
-    --muted: #55556a;
-    --danger: #ff4466;
-    --warn: #ffaa00;
-    --success: #00e5a0;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    min-height: 100vh;
-    font-size: 14px;
-  }
-
-  .grid-bg {
-    position: fixed; inset: 0; z-index: 0;
-    background-image:
-      linear-gradient(rgba(0,229,160,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,160,0.025) 1px, transparent 1px);
-    background-size: 48px 48px;
-    pointer-events: none;
-  }
-
-  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 52px 24px 80px; }
-
-  /* HEADER */
-  header { margin-bottom: 52px; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  h1 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  h1 span { color: var(--accent); }
-  .tagline { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-  /* STEPS */
-  .steps { display: flex; flex-direction: column; gap: 20px; }
-
-  .step {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .step.active { border-color: var(--accent); }
-  .step.done { border-color: var(--accent-dark); opacity: 0.7; }
-
-  .step-header {
-    display: flex; align-items: center; gap: 14px;
-    padding: 18px 20px;
-  }
-  .step-num {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: var(--surface2); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 500; color: var(--muted);
-    flex-shrink: 0;
-  }
-  .step.active .step-num { background: var(--accent); color: #000; border-color: var(--accent); }
-  .step.done .step-num { background: var(--accent-dark); color: var(--accent); border-color: var(--accent-dark); }
-  .step-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
-  .step-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  .step-body { padding: 0 20px 20px; padding-left: 62px; }
-
-  /* INPUTS */
-  .field { margin-bottom: 14px; }
-  label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
-  input[type=text], input[type=password] {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; color: var(--text);
-    font-family: 'DM Mono', monospace; font-size: 13px;
-    outline: none; transition: border-color 0.2s;
-  }
-  input:focus { border-color: var(--accent); }
-  input::placeholder { color: var(--muted); }
-
-  /* BUTTONS */
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 20px; border-radius: 8px; border: none;
-    font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .btn-primary {
-    background: var(--accent); color: #000;
-  }
-  .btn-primary:hover { background: #00ffb3; }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-outline {
-    background: transparent; color: var(--text); border: 1px solid var(--border);
-  }
-  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* FILE UPLOAD */
-  .upload-zone {
-    border: 1.5px dashed var(--border); border-radius: 10px;
-    padding: 28px; text-align: center; cursor: pointer;
-    transition: all 0.2s; background: var(--surface2);
-  }
-  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
-  .upload-zone input { display: none; }
-  .upload-icon { font-size: 28px; margin-bottom: 8px; }
-  .upload-text { font-size: 13px; color: var(--muted); }
-  .upload-text strong { color: var(--accent); }
-  .file-loaded { font-size: 12px; color: var(--accent); margin-top: 8px; }
-
-  /* STATUS */
-  .status-bar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 16px; border-radius: 8px;
-    font-size: 12px; margin-top: 14px;
-    background: var(--surface2); border: 1px solid var(--border);
-  }
-  .status-bar.info { border-color: var(--accent-dark); color: var(--accent); }
-  .status-bar.error { border-color: var(--danger); color: var(--danger); }
-  .status-bar.warn { border-color: var(--warn); color: var(--warn); }
-  .spinner {
-    width: 14px; height: 14px; border: 2px solid var(--accent-dark);
-    border-top-color: var(--accent); border-radius: 50%;
-    animation: spin 0.7s linear infinite; flex-shrink: 0;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* RESULTS TABLE */
-  .results-section { margin-top: 24px; }
-  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
-  .results-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
-  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .badge-green { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-dark); }
-  .badge-gray { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
-
-  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
-  table { width: 100%; border-collapse: collapse; }
-  thead tr { background: var(--surface2); }
-  th {
-    padding: 10px 14px; text-align: left; font-size: 11px;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
-    font-weight: 500; white-space: nowrap; border-bottom: 1px solid var(--border);
-  }
-  td {
-    padding: 11px 14px; font-size: 12px; border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface2); }
-  .td-name { font-weight: 500; color: var(--text); }
-  .td-email { color: var(--muted); font-size: 11px; }
-  .td-subject { color: var(--text); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .td-snippet { color: var(--muted); font-size: 11px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .td-date { color: var(--muted); white-space: nowrap; font-size: 11px; }
-  .tag-respuesta { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid var(--accent-dark); }
-
-  /* EMPTY STATE */
-  .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
-  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
-
-  /* DIVIDER */
-  .divider { height: 1px; background: var(--border); margin: 8px 0; }
-
-  /* TOOLTIP */
-  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
-  .hint a { color: var(--accent); text-decoration: none; }
-  .hint a:hover { text-decoration: underline; }
-
-  /* AUTH BUTTON SPECIAL */
-  .btn-google {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 11px 20px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--surface2); color: var(--text);
-    font-family: 'DM Mono', monospace; font-size: 13px;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .btn-google:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-google svg { flex-shrink: 0; }
-
-  .connected-badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 14px; border-radius: 8px;
-    background: var(--accent-dim); border: 1px solid var(--accent-dark);
-    color: var(--accent); font-size: 12px;
-  }
-  .connected-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+:root{--bg:#09090f;--surface:#111118;--surface2:#18181f;--border:#222230;--accent:#00e5a0;--accent-dim:rgba(0,229,160,0.12);--accent-dark:#004d35;--text:#e4e4f0;--muted:#55556a;--danger:#ff4466;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;font-size:14px;}
+.grid-bg{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(0,229,160,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:52px 24px 80px;}
+header{margin-bottom:52px;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-dot{width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+h1 span{color:var(--accent);}
+.tagline{font-size:12px;color:var(--muted);margin-top:4px;}
+.steps{display:flex;flex-direction:column;gap:20px;}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color 0.2s;}
+.step.active{border-color:var(--accent);}
+.step.done{border-color:var(--accent-dark);opacity:0.7;}
+.step-header{display:flex;align-items:center;gap:14px;padding:18px 20px;}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--muted);flex-shrink:0;}
+.step.active .step-num{background:var(--accent);color:#000;border-color:var(--accent);}
+.step.done .step-num{background:var(--accent-dark);color:var(--accent);border-color:var(--accent-dark);}
+.step-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.step-subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+.step-body{padding:0 20px 20px;padding-left:62px;}
+.field{margin-bottom:14px;}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:0.05em;text-transform:uppercase;}
+input[type=text],input[type=password],select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.2s;}
+input:focus,select:focus{border-color:var(--accent);}
+input::placeholder{color:var(--muted);}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:none;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:#00ffb3;}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+.upload-zone{border:1.5px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface2);}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:var(--accent-dim);}
+.upload-zone input{display:none;}
+.upload-icon{font-size:28px;margin-bottom:8px;}
+.upload-text{font-size:13px;color:var(--muted);}
+.upload-text strong{color:var(--accent);}
+.file-loaded{font-size:12px;color:var(--accent);margin-top:8px;}
+.status-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:8px;font-size:12px;margin-top:14px;background:var(--surface2);border:1px solid var(--border);}
+.status-bar.info{border-color:var(--accent-dark);color:var(--accent);}
+.status-bar.error{border-color:var(--danger);color:var(--danger);}
+.spinner{width:14px;height:14px;border:2px solid var(--accent-dark);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.results-section{margin-top:32px;}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.results-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--surface2);}
+th{padding:10px 14px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:500;white-space:nowrap;border-bottom:1px solid var(--border);}
+td{padding:11px 14px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.tag{display:inline-flex;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;}
+.tag-green{background:rgba(0,229,160,0.1);color:var(--accent);border:1px solid var(--accent-dark);}
+.tag-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+.hint a{color:var(--accent);text-decoration:none;}
+.btn-google{display:inline-flex;align-items:center;gap:10px;padding:11px 20px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;transition:all 0.15s;}
+.btn-google:hover{border-color:var(--accent);color:var(--accent);}
+.connected-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;background:var(--accent-dim);border:1px solid var(--accent-dark);color:var(--accent);font-size:12px;}
+.connected-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s;}
 </style>
 </head>
 <body>
 <div class="grid-bg"></div>
 <div class="wrap">
-
-  <header>
-    <div>
-      <div class="brand">
-        <div class="brand-dot"></div>
-        <h1>Cobra<span>YA</span></h1>
-      </div>
-      <div class="tagline">Lector de respuestas Gmail · sofia@cobraya.info</div>
-    </div>
-  </header>
-
-  <div class="steps">
-
-    <!-- STEP 1: Config -->
-    <div class="step active" id="step1">
-      <div class="step-header">
-        <div class="step-num">1</div>
-        <div>
-          <div class="step-title">Configurar credenciales</div>
-          <div class="step-subtitle">Client ID y Client Secret de Google Cloud</div>
-        </div>
-      </div>
-      <div class="step-body">
-        <div class="field">
-          <label>Client ID</label>
-          <input type="text" id="clientId" placeholder="xxxx.apps.googleusercontent.com" />
-        </div>
-        <div class="field">
-          <label>Client Secret</label>
-          <input type="password" id="clientSecret" placeholder="GOCSPX-..." />
-        </div>
-        <p class="hint">Estos datos no se guardan en ningún servidor. Solo viven en tu navegador durante la sesión.</p>
-        <br>
-        <button class="btn btn-primary" onclick="saveConfig()">Guardar y continuar →</button>
-      </div>
-    </div>
-
-    <!-- STEP 2: Auth Gmail -->
-    <div class="step" id="step2">
-      <div class="step-header">
-        <div class="step-num">2</div>
-        <div>
-          <div class="step-title">Conectar Gmail</div>
-          <div class="step-subtitle">Autoriza acceso a sofia@cobraya.info</div>
-        </div>
-      </div>
-      <div class="step-body" id="step2body">
-        <button class="btn-google" onclick="startAuth()">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.59-13.46-8.83l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-          Autorizar con Google
-        </button>
-        <p class="hint" style="margin-top:10px">Se abrirá una ventana de Google para que autorices el acceso de lectura a Gmail.</p>
-        <div id="authStatus"></div>
-      </div>
-    </div>
-
-    <!-- STEP 3: Upload Excel -->
-    <div class="step" id="step3">
-      <div class="step-header">
-        <div class="step-num">3</div>
-        <div>
-          <div class="step-title">Cargar lista de deudores</div>
-          <div class="step-subtitle">El Excel que entrega el software CobraYA</div>
-        </div>
-      </div>
-      <div class="step-body">
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDrag(event,true)" ondragleave="handleDrag(event,false)" ondrop="handleDrop(event)">
-          <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="loadExcel(event)">
-          <div class="upload-icon">📂</div>
-          <div class="upload-text">Clic para seleccionar o arrastra tu archivo<br><strong>.xlsx</strong></div>
-          <div class="file-loaded" id="fileLoaded"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 4: Fetch & match -->
-    <div class="step" id="step4">
-      <div class="step-header">
-        <div class="step-num">4</div>
-        <div>
-          <div class="step-title">Buscar respuestas</div>
-          <div class="step-subtitle">Lee Gmail y cruza con la lista de deudores</div>
-        </div>
-      </div>
-      <div class="step-body">
-        <div class="field">
-          <label>Buscar correos de los últimos</label>
-          <select id="daysBack" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;">
-            <option value="7">7 días</option>
-            <option value="15">15 días</option>
-            <option value="30" selected>30 días</option>
-            <option value="60">60 días</option>
-            <option value="90">90 días</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" id="fetchBtn" onclick="fetchEmails()" disabled>
-          Buscar respuestas en Gmail
-        </button>
-        <div id="fetchStatus"></div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- RESULTS -->
-  <div class="results-section" id="resultsSection" style="display:none">
-    <div class="results-header">
-      <div>
-        <div class="results-title">Respuestas encontradas</div>
-        <div id="resultsSummary" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-outline" onclick="exportExcel()">⬇ Descargar Excel</button>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Deudor</th>
-            <th>Asunto</th>
-            <th>Fragmento</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody id="resultsBody"></tbody>
-      </table>
-    </div>
-    <div id="noResultsMsg" class="empty" style="display:none">
-      <div class="empty-icon">📭</div>
-      <div>No se encontraron respuestas de los deudores en el período seleccionado.</div>
-    </div>
-  </div>
-
+<header>
+<div class="brand"><div class="brand-dot"></div><h1>Cobra<span>YA</span></h1></div>
+<div class="tagline">Clasificador de respuestas Gmail con IA · sofia@cobraya.info</div>
+</header>
+<div class="steps">
+<div class="step active" id="step1">
+<div class="step-header"><div class="step-num">1</div><div><div class="step-title">Configurar credenciales</div><div class="step-subtitle">Google OAuth + API Key de Claude</div></div></div>
+<div class="step-body">
+<div class="field"><label>Client ID de Google</label><input type="text" id="clientId" placeholder="xxxx.apps.googleusercontent.com"/></div>
+<div class="field"><label>Client Secret de Google</label><input type="password" id="clientSecret" placeholder="GOCSPX-..."/></div>
+<div class="field"><label>API Key de Anthropic (Claude)</label><input type="password" id="claudeKey" placeholder="sk-ant-api03-..."/><p class="hint">Obtén tu key en <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Solo vive en tu navegador.</p></div>
+<button class="btn btn-primary" onclick="saveConfig()">Guardar y continuar →</button>
 </div>
-
+</div>
+<div class="step" id="step2">
+<div class="step-header"><div class="step-num">2</div><div><div class="step-title">Conectar Gmail</div><div class="step-subtitle">Autoriza con sofia@cobraya.info</div></div></div>
+<div class="step-body">
+<button class="btn-google" onclick="startAuth()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.59-13.46-8.83l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Autorizar con Google</button>
+<p class="hint" style="margin-top:10px">Usa sofia@cobraya.info para acceder a los correos recibidos.</p>
+<div id="authStatus"></div>
+</div>
+</div>
+<div class="step" id="step3">
+<div class="step-header"><div class="step-num">3</div><div><div class="step-title">Cargar lista de deudores</div><div class="step-subtitle">Excel del software CobraYA</div></div></div>
+<div class="step-body">
+<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDrag(event,true)" ondragleave="handleDrag(event,false)" ondrop="handleDrop(event)">
+<input type="file" id="fileInput" accept=".xlsx,.xls" onchange="loadExcel(event)">
+<div class="upload-icon">📂</div>
+<div class="upload-text">Clic o arrastra tu archivo <strong>.xlsx</strong></div>
+<div class="file-loaded" id="fileLoaded"></div>
+</div>
+</div>
+</div>
+<div class="step" id="step4">
+<div class="step-header"><div class="step-num">4</div><div><div class="step-title">Buscar y clasificar con IA</div><div class="step-subtitle">Lee Gmail, cruza deudores y asigna casuística automáticamente</div></div></div>
+<div class="step-body">
+<div class="field"><label>Período de búsqueda</label>
+<select id="daysBack"><option value="7">7 días</option><option value="15">15 días</option><option value="30" selected>30 días</option><option value="60">60 días</option><option value="90">90 días</option></select>
+</div>
+<button class="btn btn-primary" id="fetchBtn" onclick="fetchAndClassify()" disabled>🔍 Buscar y clasificar</button>
+<div id="fetchStatus"></div>
+<div id="progressWrap" style="display:none;margin-top:12px;">
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+<div id="progressText" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="results-section" id="resultsSection" style="display:none">
+<div class="results-header">
+<div><div class="results-title">Resultado de clasificación</div><div id="resultsSummary" style="font-size:12px;color:var(--muted);margin-top:4px;"></div></div>
+<button class="btn btn-primary" onclick="exportExcel()">⬇ Descargar Excel</button>
+</div>
+<div class="table-wrap">
+<table><thead><tr><th>RUT</th><th>Fecha Gestión</th><th>Hora</th><th>Acción</th><th>Contacto</th><th>Respuesta</th><th>Observación</th></tr></thead>
+<tbody id="resultsBody"></tbody></table>
+</div>
+</div>
+</div>
 <script>
-// ── STATE ──────────────────────────────────────────────────────────────────
-let state = {
-  clientId: '',
-  clientSecret: '',
-  accessToken: null,
-  debtors: [],       // [{name, email, rut, invoice, amount, ...}]
-  matches: []        // [{debtor, subject, snippet, date, messageId}]
-};
-
-const REDIRECT_URI = 'https://lbgmantell1.github.io/GmailReader';
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
-
-// ── STEP 1: Config ─────────────────────────────────────────────────────────
-function saveConfig() {
-  const id = document.getElementById('clientId').value.trim();
-  const secret = document.getElementById('clientSecret').value.trim();
-  if (!id || !secret) return alert('Ingresa ambos campos.');
-  state.clientId = id;
-  state.clientSecret = secret;
-  sessionStorage.setItem('cy_client_id', id);
-  sessionStorage.setItem('cy_client_secret', secret);
-  setStepDone(1);
-  setStepActive(2);
-}
-
-// ── STEP 2: OAuth ──────────────────────────────────────────────────────────
-function startAuth() {
-  if (!state.clientId) {
-    // try recover from session
-    state.clientId = sessionStorage.getItem('cy_client_id') || '';
-    state.clientSecret = sessionStorage.getItem('cy_client_secret') || '';
-  }
-  if (!state.clientId) return alert('Primero guarda las credenciales (Paso 1).');
-
-  const params = new URLSearchParams({
-    client_id: state.clientId,
-    redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    scope: SCOPES,
-    access_type: 'offline',
-    prompt: 'consent'
-  });
-  sessionStorage.setItem('cy_oauth_pending', '1');
-  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
-}
-
-async function handleCallback(code) {
-  showAuthStatus('spinner', 'Obteniendo token de acceso...');
-  try {
-    const resp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: state.clientId,
-        client_secret: state.clientSecret,
-        redirect_uri: REDIRECT_URI,
-        grant_type: 'authorization_code'
-      })
-    });
-    const data = await resp.json();
-    if (data.access_token) {
-      state.accessToken = data.access_token;
-      sessionStorage.setItem('cy_token', data.access_token);
-      showAuthStatus('success', '✓ Gmail conectado correctamente');
-      setStepDone(2);
-      setStepActive(3);
-      // clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else {
-      showAuthStatus('error', 'Error: ' + (data.error_description || JSON.stringify(data)));
-    }
-  } catch(e) {
-    showAuthStatus('error', 'Error de red: ' + e.message);
-  }
-}
-
-function showAuthStatus(type, msg) {
-  const el = document.getElementById('authStatus');
-  if (type === 'spinner') {
-    el.innerHTML = `<div class="status-bar info"><div class="spinner"></div><span>${msg}</span></div>`;
-  } else if (type === 'success') {
-    el.innerHTML = `<div class="connected-badge"><div class="connected-dot"></div>${msg}</div>`;
-  } else {
-    el.innerHTML = `<div class="status-bar error">⚠ ${msg}</div>`;
-  }
-}
-
-// ── STEP 3: Excel upload ───────────────────────────────────────────────────
-function handleDrag(e, over) {
-  e.preventDefault();
-  document.getElementById('uploadZone').classList.toggle('dragover', over);
-}
-function handleDrop(e) {
-  e.preventDefault();
-  handleDrag(e, false);
-  const file = e.dataTransfer.files[0];
-  if (file) processExcel(file);
-}
-function loadExcel(e) {
-  processExcel(e.target.files[0]);
-}
-
-function processExcel(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const wb = XLSX.read(e.target.result, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-    state.debtors = rows.map(r => ({
-      name: r['Nombre Contacto'] || r['Razon Social'] || '',
-      email: (r['Email Contacto'] || '').toLowerCase().trim(),
-      rut: r['Rut'] || r['Rut Empresa'] || '',
-      invoice: r['Nº Factura Venta'] || '',
-      amount: r['Monto'] || '',
-      estado: r['Estado'] || '',
-      empresa: r['Empresa'] || '',
-      vencimiento: r['Fecha Vencimiento'] || '',
-      _raw: r
-    })).filter(d => d.email && d.email.includes('@'));
-
-    const loaded = document.getElementById('fileLoaded');
-    loaded.textContent = `✓ ${file.name} — ${state.debtors.length} deudores con email cargados`;
-    setStepDone(3);
-    setStepActive(4);
-    document.getElementById('fetchBtn').disabled = false;
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-// ── STEP 4: Fetch Gmail ────────────────────────────────────────────────────
-async function fetchEmails() {
-  if (!state.accessToken) return alert('Primero conecta Gmail (Paso 2).');
-  if (!state.debtors.length) return alert('Primero carga el Excel (Paso 3).');
-
-  const days = parseInt(document.getElementById('daysBack').value);
-  const after = Math.floor((Date.now() - days * 86400000) / 1000);
-
-  document.getElementById('fetchBtn').disabled = true;
-  setFetchStatus('spinner', 'Buscando correos...');
-
-  try {
-    // Build email set for fast lookup
-    const emailSet = new Set(state.debtors.map(d => d.email));
-    state.matches = [];
-
-    // Search Gmail for messages in inbox after date
-    const query = `after:${after}`;
-    let pageToken = null;
-    let fetched = 0;
-
-    do {
-      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.set('q', query);
-      url.searchParams.set('maxResults', '100');
-      if (pageToken) url.searchParams.set('pageToken', pageToken);
-
-      const listResp = await gmailFetch(url.toString());
-      if (!listResp.messages || listResp.messages.length === 0) break;
-
-      setFetchStatus('spinner', `Procesando ${fetched + listResp.messages.length} correos...`);
-
-      // Fetch each message metadata
-      for (const msg of listResp.messages) {
-        const detail = await gmailFetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`
-        );
-
-        const headers = detail.payload?.headers || [];
-        const fromHeader = headers.find(h => h.name === 'From')?.value || '';
-        const subject = headers.find(h => h.name === 'Subject')?.value || '(sin asunto)';
-        const dateStr = headers.find(h => h.name === 'Date')?.value || '';
-
-        // Extract email from "Name <email>" format
-        const emailMatch = fromHeader.match(/<(.+?)>/) || fromHeader.match(/([^\s]+@[^\s]+)/);
-        const fromEmail = (emailMatch ? emailMatch[1] : fromHeader).toLowerCase().trim();
-
-        if (emailSet.has(fromEmail)) {
-          const debtor = state.debtors.find(d => d.email === fromEmail);
-          state.matches.push({
-            debtor,
-            fromEmail,
-            subject,
-            snippet: detail.snippet || '',
-            date: parseDate(dateStr),
-            messageId: msg.id
-          });
-        }
-        fetched++;
-      }
-
-      pageToken = listResp.nextPageToken || null;
-    } while (pageToken && fetched < 500);
-
-    setFetchStatus('success', `✓ Revisados ${fetched} correos — ${state.matches.length} respuestas de deudores encontradas`);
-    renderResults();
-    document.getElementById('fetchBtn').disabled = false;
-
-  } catch(e) {
-    setFetchStatus('error', 'Error: ' + e.message);
-    document.getElementById('fetchBtn').disabled = false;
-  }
-}
-
-async function gmailFetch(url) {
-  const resp = await fetch(url, {
-    headers: { 'Authorization': 'Bearer ' + state.accessToken }
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || resp.statusText);
-  }
-  return resp.json();
-}
-
-function parseDate(dateStr) {
-  if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch { return dateStr; }
-}
-
-function setFetchStatus(type, msg) {
-  const el = document.getElementById('fetchStatus');
-  if (type === 'spinner') {
-    el.innerHTML = `<div class="status-bar info"><div class="spinner"></div><span>${msg}</span></div>`;
-  } else if (type === 'success') {
-    el.innerHTML = `<div class="status-bar info">✓ ${msg}</div>`;
-  } else {
-    el.innerHTML = `<div class="status-bar error">⚠ ${msg}</div>`;
-  }
-}
-
-// ── RESULTS ────────────────────────────────────────────────────────────────
-function renderResults() {
-  const section = document.getElementById('resultsSection');
-  const tbody = document.getElementById('resultsBody');
-  const noMsg = document.getElementById('noResultsMsg');
-  const summary = document.getElementById('resultsSummary');
-
-  section.style.display = 'block';
-  summary.textContent = `${state.matches.length} respuesta(s) de ${new Set(state.matches.map(m=>m.fromEmail)).size} deudor(es) único(s)`;
-
-  if (state.matches.length === 0) {
-    tbody.innerHTML = '';
-    noMsg.style.display = 'block';
-    return;
-  }
-  noMsg.style.display = 'none';
-
-  // Sort by date desc
-  const sorted = [...state.matches].sort((a,b) => new Date(b.date) - new Date(a.date));
-
-  tbody.innerHTML = sorted.map(m => `
-    <tr>
-      <td>
-        <div class="td-name">${escHtml(m.debtor?.name || m.fromEmail)}</div>
-        <div class="td-email">${escHtml(m.fromEmail)}</div>
-      </td>
-      <td class="td-subject">${escHtml(m.subject)}</td>
-      <td class="td-snippet">${escHtml(m.snippet)}</td>
-      <td class="td-date">${escHtml(m.date)}</td>
-      <td><span class="tag-respuesta">respondió</span></td>
-    </tr>
-  `).join('');
-}
-
-function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── EXPORT EXCEL ───────────────────────────────────────────────────────────
-function exportExcel() {
-  if (!state.matches.length) return alert('No hay resultados para exportar.');
-
-  // Build rows: original debtor data + new columns
-  const rows = state.matches.map(m => {
-    const raw = m.debtor?._raw || {};
-    return {
-      ...raw,
-      'Respuesta_Asunto': m.subject,
-      'Respuesta_Fragmento': m.snippet,
-      'Respuesta_Fecha': m.date,
-      'Respuesta_Estado': 'Respondió'
-    };
-  });
-
-  // Also include debtors with NO response for completeness
-  const respondedEmails = new Set(state.matches.map(m => m.fromEmail));
-  const noResponse = state.debtors
-    .filter(d => !respondedEmails.has(d.email))
-    .map(d => ({
-      ...d._raw,
-      'Respuesta_Asunto': '',
-      'Respuesta_Fragmento': '',
-      'Respuesta_Fecha': '',
-      'Respuesta_Estado': 'Sin respuesta'
-    }));
-
-  const allRows = [...rows, ...noResponse];
-
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(allRows);
-  XLSX.utils.book_append_sheet(wb, ws, 'CobraYA Respuestas');
-
-  // Second sheet: only responded
-  const ws2 = XLSX.utils.json_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws2, 'Solo Respondieron');
-
-  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  XLSX.writeFile(wb, `CobraYA_Respuestas_${date}.xlsx`);
-}
-
-// ── STEP HELPERS ───────────────────────────────────────────────────────────
-function setStepActive(n) {
-  const el = document.getElementById(`step${n}`);
-  el.classList.add('active');
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-function setStepDone(n) {
-  const el = document.getElementById(`step${n}`);
-  el.classList.remove('active');
-  el.classList.add('done');
-  el.querySelector('.step-num').textContent = '✓';
-}
-
-// ── INIT: handle OAuth callback ────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  // Recover credentials from session
-  const savedId = sessionStorage.getItem('cy_client_id');
-  const savedSecret = sessionStorage.getItem('cy_client_secret');
-  const savedToken = sessionStorage.getItem('cy_token');
-
-  if (savedId) {
-    document.getElementById('clientId').value = savedId;
-    state.clientId = savedId;
-  }
-  if (savedSecret) {
-    document.getElementById('clientSecret').value = savedSecret;
-    state.clientSecret = savedSecret;
-  }
-  if (savedToken) {
-    state.accessToken = savedToken;
-  }
-
-  // Check if returning from OAuth
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const error = params.get('error');
-
-  if (error) {
-    setStepActive(2);
-    showAuthStatus('error', 'Acceso denegado: ' + error);
-  } else if (code && savedId && savedSecret) {
-    setStepDone(1);
-    setStepActive(2);
-    handleCallback(code);
-  } else if (savedToken) {
-    // Already authenticated
-    setStepDone(1);
-    setStepDone(2);
-    setStepActive(3);
-    showAuthStatus('success', '✓ Gmail conectado (sesión activa)');
-  }
-});
+const CASUISTICA=[{cod:'ZX',contacto:'CD',desc:'E-MAIL CLIENTE CONTESTA'},{cod:'PP',contacto:'CD',desc:'E-MAIL CLIENTE COMPROMISO DE PAGO'},{cod:'CZ',contacto:'CD',desc:'E-MAIL CLIENTE INDICA ESTAR CESANTE'},{cod:'DP',contacto:'CD',desc:'E-MAIL DESCUENTO POR PLANILLA'},{cod:'CP',contacto:'CD',desc:'E-MAIL CLIENTE PAGO O REPROGRAMO'},{cod:'IP',contacto:'CD',desc:'E-MAIL CLIENTE SIN INTENCION DE PAGO'},{cod:'WS',contacto:'CD',desc:'E-MAIL CLIENTE DERIVACION A WHATSAPP'},{cod:'AY',contacto:'CD',desc:'E-MAIL CLIENTE CON LICENCIA MEDICA'},{cod:'FL',contacto:'CI',desc:'E-MAIL CLIENTE FALLECIDO'},{cod:'AZ',contacto:'CI',desc:'E-MAIL TERCERO INDICA CLIENTE CON LICENCIA'},{cod:'NO',contacto:'SC',desc:'E-MAIL CLIENTE NO CONTESTA'},{cod:'NC',contacto:'SC',desc:'E-MAIL CLIENTE NO CORRESPONDE'},{cod:'WV',contacto:'CD',desc:'TRAMITANDO SEGURO DE CESANTIA'},{cod:'RS',contacto:'CD',desc:'E-MAIL RESPUESTA SOLUCIONES'}];
+let state={clientId:'',clientSecret:'',claudeKey:'',accessToken:null,debtors:[],results:[]};
+const REDIRECT_URI='https://lbgmantell1.github.io/GmailReader';
+function saveConfig(){const id=document.getElementById('clientId').value.trim(),secret=document.getElementById('clientSecret').value.trim(),key=document.getElementById('claudeKey').value.trim();if(!id||!secret||!key)return alert('Completa los tres campos.');state.clientId=id;state.clientSecret=secret;state.claudeKey=key;sessionStorage.setItem('cy_id',id);sessionStorage.setItem('cy_secret',secret);sessionStorage.setItem('cy_claude',key);setStepDone(1);setStepActive(2);}
+function startAuth(){if(!state.clientId){state.clientId=sessionStorage.getItem('cy_id')||'';state.clientSecret=sessionStorage.getItem('cy_secret')||'';state.claudeKey=sessionStorage.getItem('cy_claude')||'';}if(!state.clientId)return alert('Primero guarda las credenciales.');const p=new URLSearchParams({client_id:state.clientId,redirect_uri:REDIRECT_URI,response_type:'code',scope:'https://www.googleapis.com/auth/gmail.readonly',access_type:'offline',prompt:'consent'});window.location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;}
+async function handleCallback(code){showAuthStatus('spinner','Obteniendo token...');const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:state.clientId,client_secret:state.clientSecret,redirect_uri:REDIRECT_URI,grant_type:'authorization_code'})});const d=await r.json();if(d.access_token){state.accessToken=d.access_token;sessionStorage.setItem('cy_token',d.access_token);showAuthStatus('success','✓ Gmail conectado');setStepDone(2);setStepActive(3);window.history.replaceState({},document.title,window.location.pathname);}else showAuthStatus('error',d.error_description||JSON.stringify(d));}
+function showAuthStatus(type,msg){const el=document.getElementById('authStatus');if(type==='spinner')el.innerHTML=`<div class="status-bar info"><div class="spinner"></div><span>${msg}</span></div>`;else if(type==='success')el.innerHTML=`<div class="connected-badge"><div class="connected-dot"></div>${msg}</div>`;else el.innerHTML=`<div class="status-bar error">⚠ ${msg}</div>`;}
+function handleDrag(e,over){e.preventDefault();document.getElementById('uploadZone').classList.toggle('dragover',over);}
+function handleDrop(e){e.preventDefault();handleDrag(e,false);processExcel(e.dataTransfer.files[0]);}
+function loadExcel(e){processExcel(e.target.files[0]);}
+function processExcel(file){const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});state.debtors=rows.map(r=>({rutRaw:r['Rut']||r['RUT']||'',rut:String(r['Rut']||r['RUT']||'').split('-')[0]||'',dv:String(r['Rut']||r['RUT']||'').split('-')[1]||'',email:(r['Email Contacto']||'').toLowerCase().trim(),name:r['Nombre Contacto']||r['Razon Social']||''})).filter(d=>d.email&&d.email.includes('@'));document.getElementById('fileLoaded').textContent=`✓ ${file.name} — ${state.debtors.length} deudores con email`;setStepDone(3);setStepActive(4);document.getElementById('fetchBtn').disabled=false;};reader.readAsArrayBuffer(file);}
+async function fetchAndClassify(){if(!state.accessToken)return alert('Primero conecta Gmail.');if(!state.debtors.length)return alert('Primero carga el Excel.');const days=parseInt(document.getElementById('daysBack').value),after=Math.floor((Date.now()-days*86400000)/1000);document.getElementById('fetchBtn').disabled=true;document.getElementById('progressWrap').style.display='block';setFetchStatus('spinner','Buscando correos en Gmail...');try{const emailMap=new Map(state.debtors.map(d=>[d.email,d]));const matches=[];let pageToken=null,fetched=0;do{const url=new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');url.searchParams.set('q',`after:${after}`);url.searchParams.set('maxResults','100');if(pageToken)url.searchParams.set('pageToken',pageToken);const list=await gmailFetch(url.toString());if(!list.messages?.length)break;for(const msg of list.messages){const detail=await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`);const headers=detail.payload?.headers||[];const fromH=headers.find(h=>h.name==='From')?.value||'';const subjH=headers.find(h=>h.name==='Subject')?.value||'(sin asunto)';const dateH=headers.find(h=>h.name==='Date')?.value||'';const em=fromH.match(/<(.+?)>/)||fromH.match(/([^\s]+@[^\s]+)/);const fromEmail=(em?em[1]:fromH).toLowerCase().trim();if(emailMap.has(fromEmail))matches.push({debtor:emailMap.get(fromEmail),fromEmail,subject:subjH,body:extractBody(detail.payload),snippet:detail.snippet||'',date:dateH});fetched++;}setProgress(Math.min(fetched,500),500,`Revisados ${fetched} correos — ${matches.length} de deudores encontrados`);pageToken=list.nextPageToken||null;}while(pageToken&&fetched<500);if(!matches.length){setFetchStatus('success','✓ Sin respuestas de deudores en el período');document.getElementById('fetchBtn').disabled=false;return;}setFetchStatus('spinner',`Clasificando ${matches.length} respuestas con IA...`);state.results=[];for(let i=0;i<matches.length;i++){const m=matches[i];setProgress(i+1,matches.length,`Clasificando ${i+1}/${matches.length}: ${m.debtor.name}`);const cls=await classifyEmail(m.subject,m.body||m.snippet);state.results.push({...m,...cls});}setFetchStatus('success',`✓ ${state.results.length} correos clasificados`);renderResults();document.getElementById('fetchBtn').disabled=false;}catch(e){setFetchStatus('error','Error: '+e.message);document.getElementById('fetchBtn').disabled=false;}}
+function extractBody(payload){if(!payload)return '';if(payload.body?.data)return atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/'));if(payload.parts){for(const p of payload.parts)if(p.mimeType==='text/plain'&&p.body?.data)return atob(p.body.data.replace(/-/g,'+').replace(/_/g,'/'));for(const p of payload.parts){const s=extractBody(p);if(s)return s;}}return '';}
+async function classifyEmail(subject,body){const text=`Asunto: ${subject}\n\nCuerpo: ${(body||'').substring(0,1500)}`;const prompt=`Eres un clasificador de correos de cobranza. Analiza el correo y asigna el código:\nZX-Cliente responde genérico\nPP-Compromiso de pago\nCZ-Cesante\nDP-Descuento por planilla\nCP-Ya pagó o reprogramó\nIP-Sin intención de pago\nWS-Pide WhatsApp\nAY-Licencia médica\nFL-Fallecido\nAZ-Tercero indica licencia\nNC-Correo no corresponde o bounce\nWV-Tramitando seguro cesantía\nRS-Busca soluciones\n\nCORREO:\n${text}\n\nResponde SOLO JSON sin markdown: {"codigo":"XX","observacion":"resumen máximo 100 chars"}`;try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':state.claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,messages:[{role:'user',content:prompt}]})});const d=await r.json();const raw=d.content?.[0]?.text||'{}';const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());const cas=CASUISTICA.find(c=>c.cod===parsed.codigo)||CASUISTICA[0];return{respuesta:cas.cod,contacto:cas.contacto,observacion:parsed.observacion||''};}catch{return{respuesta:'ZX',contacto:'CD',observacion:'Clasificación manual requerida'};}}
+async function gmailFetch(url){const r=await fetch(url,{headers:{'Authorization':'Bearer '+state.accessToken}});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||r.statusText);}return r.json();}
+function parseDate(dateStr){if(!dateStr)return{fecha:'',hora:''};try{const d=new Date(dateStr);return{fecha:`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`,hora:`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`};}catch{return{fecha:'',hora:''};}}
+function renderResults(){document.getElementById('resultsSection').style.display='block';document.getElementById('resultsSummary').textContent=`${state.results.length} respuesta(s) clasificadas`;document.getElementById('resultsBody').innerHTML=state.results.map(r=>{const{fecha,hora}=parseDate(r.date);const cas=CASUISTICA.find(c=>c.cod===r.respuesta);return`<tr><td>${escHtml(r.debtor.rut)}-${escHtml(r.debtor.dv)}<br><span style="color:var(--muted);font-size:11px">${escHtml(r.debtor.name)}</span></td><td>${escHtml(fecha)}</td><td>${escHtml(hora)}</td><td><span class="tag tag-gray">EX</span></td><td><span class="tag ${r.contacto==='CD'?'tag-green':'tag-gray'}">${escHtml(r.contacto)}</span></td><td><strong>${escHtml(r.respuesta)}</strong><br><span style="color:var(--muted);font-size:10px">${escHtml(cas?.desc||'')}</span></td><td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(r.observacion)}">${escHtml(r.observacion)}</td></tr>`;}).join('');document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'});}
+function exportExcel(){if(!state.results.length)return alert('No hay resultados.');const rows=state.results.map(r=>{const{fecha,hora}=parseDate(r.date);return{RUT:r.debtor.rut,DV:r.debtor.dv,'FECHA GESTION':fecha,'HORA GESTION':hora,FONO:r.fromEmail,ACCION:'EX',CONTACTO:r.contacto,RESPUESTA:r.respuesta,OBSERVACION:r.observacion,FECHA_COMPROMISO:'',TRANSCRIPCION:(r.body||r.snippet||'').substring(0,500)};});const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[8,4,14,12,35,4,8,8,50,16,60].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,'Respuestas Email');XLSX.writeFile(wb,`CobraYA_Emails_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`);}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function setFetchStatus(type,msg){const el=document.getElementById('fetchStatus');if(type==='spinner')el.innerHTML=`<div class="status-bar info"><div class="spinner"></div><span>${msg}</span></div>`;else if(type==='success')el.innerHTML=`<div class="status-bar info">✓ ${msg}</div>`;else el.innerHTML=`<div class="status-bar error">⚠ ${msg}</div>`;}
+function setProgress(val,total,text){document.getElementById('progressFill').style.width=`${Math.round(val/total*100)}%`;document.getElementById('progressText').textContent=text;}
+function setStepActive(n){const el=document.getElementById(`step${n}`);el.classList.add('active');el.scrollIntoView({behavior:'smooth',block:'center'});}
+function setStepDone(n){const el=document.getElementById(`step${n}`);el.classList.remove('active');el.classList.add('done');el.querySelector('.step-num').textContent='✓';}
+window.addEventListener('DOMContentLoaded',()=>{const si=sessionStorage.getItem('cy_id'),ss=sessionStorage.getItem('cy_secret'),sc=sessionStorage.getItem('cy_claude'),st=sessionStorage.getItem('cy_token');if(si){document.getElementById('clientId').value=si;state.clientId=si;}if(ss){document.getElementById('clientSecret').value=ss;state.clientSecret=ss;}if(sc){document.getElementById('claudeKey').value=sc;state.claudeKey=sc;}if(st)state.accessToken=st;const p=new URLSearchParams(window.location.search);const code=p.get('code'),error=p.get('error');if(error){setStepActive(2);showAuthStatus('error','Acceso denegado: '+error);}else if(code&&si&&ss){setStepDone(1);setStepActive(2);handleCallback(code);}else if(st){setStepDone(1);setStepDone(2);setStepActive(3);showAuthStatus('success','✓ Gmail conectado (sesión activa)');}});
 </script>
 </body>
 </html>
